@@ -3,7 +3,9 @@ dotenv.config();
 
 import * as cors from "cors";
 import * as express from "express";
+import * as swaggerUi from "swagger-ui-express";
 import TransactionRouter from "./routes/transaction-router";
+import { swaggerSpec } from "./swagger";
 
 export class App {
   private app: express.Application;
@@ -23,11 +25,13 @@ export class App {
 
   private setupRoutes() {
     this.app.use("/api/v1", this.transactionRouter.getRouter());
+    this.app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   }
 
   startServer(port: number) {
     this.app.listen(port, () => {
-      console.log(`App Running on http://localhost:${port}/api/v1`);
+      console.log(`App Running on http://localhost:${port} 🚀`);
+      console.log(`Swagger Docs:  http://localhost:${port}/api-docs`);
     });
   }
 }

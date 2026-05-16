@@ -1,20 +1,74 @@
-describe("Transaction Service", () => {
-  it("should validate transaction", () => {
-    let firstElement = 10000;
-    let secondElement = 20000;
-    let intETHValue = 15000;
-    let isValid = false;
-    if (firstElement <= intETHValue && intETHValue <= secondElement) {
-      isValid = true;
-    }
-    expect(isValid).toBe(true);
+import { TransactionService } from "../../src/services/transaction-service";
+import { priceCache } from "../../src/cache/price-cache";
+
+describe("TransactionService — unit tests", () => {
+  let service: TransactionService;
+
+  beforeEach(() => {
+    service = new TransactionService();
+    priceCache.flushAll();
   });
-  it("should separate bid values", () => {
-    const rangeBidValue = "10000-20000";
-    const rangeSplit = rangeBidValue.split("-");
-    const firstElement = parseInt(rangeSplit[0]);
-    const secondElement = parseInt(rangeSplit[1]);
-    expect(firstElement).toBe(10000);
-    expect(secondElement).toBe(20000);
+
+  // ── separateBidValues ──────────────────────────────────────────────────────
+
+  describe("separateBidValues()", () => {
+    it("correctly splits a valid range string", () => {
+      const result = service.separateBidValues("10000-20000");
+      expect(result).toEqual({ minValue: 10000, maxValue: 20000 });
+    });
+
+    it("works with decimal values", () => {
+      const result = service.separateBidValues("1500.50-2000.75");
+      expect(result.minValue).toBeCloseTo(1500.5);
+      expect(result.maxValue).toBeCloseTo(2000.75);
+    });
+
+    it("throws when format has no dash separator", () => {
+      expect(() => service.separateBidValues("invalid")).toThrow(
+        /Invalid rangeBidValue format/
+      );
+    });
+
+    it("throws when values are non-numeric", () => {
+      expect(() => service.separateBidValues("abc-def")).toThrow(
+        /non-numeric/
+      );
+    });
+
+    it("throws when minValue >= maxValue", () => {
+      expect(() => service.separateBidValues("20000-10000")).toThrow(
+        /minValue.*must be less than maxValue/
+      );
+    });
+
+    it("throws when minValue equals maxValue", () => {
+      expect(() => service.separateBidValues("5000-5000")).toThrow(
+        /minValue.*must be less than maxValue/
+      );
+    });
+  });
+
+  // ── isTransactionValid ─────────────────────────────────────────────────────
+
+  describe("isTransactionValid()", () => {
+    it("returns true when price is within range", () => {
+      expect(service.isTransactionValid(10000, 20000, 15000)).toBe(true);
+    });
+
+    it("returns true when price equals minValue (boundary)", () => {
+      expect(service.isTransactionValid(10000, 20000, 10000)).toBe(true);
+    });
+
+    it("returns true when price equals maxValue (boundary)", () => {
+      expect(service.isTransactionValid(10000, 20000, 20000)).toBe(true);
+    });
+
+    it("returns false when price is below minValue", () => {
+      expect(service.isTransactionValid(10000, 20000, 5000)).toBe(false);
+    });
+
+    it("returns false when price is above maxValue", () => {
+      expect(service.isTransactionValid(10000, 20000, 25000)).toBe(false);
+    });
   });
 });

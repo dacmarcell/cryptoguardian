@@ -1,8 +1,34 @@
-GET http://localhost:3000/api/v1/transaction
+### Consulta de Preço (Padrão: ETH para BRL)
+GET http://localhost:3001/api/v1/price
+
 ###
-POST http://localhost:3000/api/v1/validate-transaction
+
+### Consulta de Preço (Moeda Específica)
+GET http://localhost:3001/api/v1/price?currency=BTC&convert=USD
+
+###
+
+### Validar Transação (Padrão: ETH para BRL)
+POST http://localhost:3001/api/v1/validate-transaction
 Content-Type: application/json
 
 {
-    "rangeBidValue":"10000-20000"
+    "rangeBidValue": "18000-25000"
 }
+
+###
+
+### Validar Transação (Moeda Específica)
+POST http://localhost:3001/api/v1/validate-transaction
+Content-Type: application/json
+
+{
+    "rangeBidValue": "60000-70000",
+    "currency": "BTC",
+    "convert": "USD"
+}
+
+###
+
+### Health Check da API
+GET http://localhost:3001/health

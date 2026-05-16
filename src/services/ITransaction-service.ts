@@ -1,12 +1,16 @@
 export default interface ITransactionService {
-  validateTransaction(rangeBidValue: string): Promise<boolean>;
+  getPrice(currency: string, convert: string): Promise<number>;
+  validateTransaction(
+    rangeBidValue: string,
+    currency: string,
+    convert: string
+  ): Promise<boolean>;
   separateBidValues(rangeBidValue: string): ISeparateBidValues;
   isTransactionValid(
-    firstElement: number,
-    intETHValue: number,
-    secondElement: number
+    minValue: number,
+    maxValue: number,
+    currentPrice: number
   ): boolean;
-  getBRLPrice(): Promise<number>;
 }
 
 export interface ISeparateBidValues {

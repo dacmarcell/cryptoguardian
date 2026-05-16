@@ -14,11 +14,10 @@ class TransactionRouter implements ITransactionRouter {
     const transactionRouter = Router();
     transactionRouter.use(json());
 
-    transactionRouter.get(
-      "/transaction",
-      this.transactionController.sendBRLPrice
-    );
+    // GET /api/v1/price?currency=ETH&convert=BRL
+    transactionRouter.get("/price", this.transactionController.getPrice);
 
+    // POST /api/v1/validate-transaction
     transactionRouter.post(
       "/validate-transaction",
       this.transactionController.validateTransaction

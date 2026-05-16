@@ -1,4 +1,4 @@
-import * as swaggerJsdoc from "swagger-jsdoc";
+import swaggerJsdoc from "swagger-jsdoc";
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -7,43 +7,42 @@ const options: swaggerJsdoc.Options = {
       title: "CryptoGuardian API",
       version: "1.0.0",
       description:
-        "API para consulta e validação de transações com Ethereum em BRL, utilizando dados em tempo real da Coinbase.",
-      contact: {
-        name: "CryptoGuardian",
-      },
+        "API para consulta e validação de transações com criptomoedas (ETH, BTC, SOL, BNB…) em qualquer moeda fiat ou crypto suportada pela Coinbase.\n\n**Cache:** preços são cacheados por 30 segundos.\n**Rate limit:** 60 requests/minuto por IP.",
     },
     servers: [
       {
-        url: "http://localhost:{port}/api/v1",
+        url: "http://localhost:{port}",
         description: "Servidor local",
         variables: {
           port: {
             default: process.env.PORT || "3001",
-            description: "Porta configurada no .env",
           },
         },
       },
     ],
     tags: [
       {
+        name: "Price",
+        description: "Consulta de preços em tempo real",
+      },
+      {
         name: "Transaction",
-        description: "Operações relacionadas a transações com ETH/BRL",
+        description: "Validação de faixas de preço",
+      },
+      {
+        name: "Health",
+        description: "Status e disponibilidade da API",
       },
     ],
     components: {
       schemas: {
-        SuccessPrice: {
+        PriceResponse: {
           type: "object",
           properties: {
-            message: {
-              type: "string",
-              example: "19854.23",
-              description: "Preço atual do ETH em BRL",
-            },
-            error: {
-              type: "boolean",
-              example: false,
-            },
+            currency: { type: "string", example: "ETH" },
+            convert: { type: "string", example: "BRL" },
+            price: { type: "string", example: "19854.23" },
+            error: { type: "boolean", example: false },
           },
         },
         ValidateRequest: {
@@ -53,90 +52,115 @@ const options: swaggerJsdoc.Options = {
             rangeBidValue: {
               type: "string",
               example: "18000-21000",
-              description:
-                "Intervalo de valores em BRL no formato 'minValue-maxValue'",
+              description: "Intervalo no formato 'minValue-maxValue'",
+            },
+            currency: {
+              type: "string",
+              example: "ETH",
+              description: "Ticker da criptomoeda (default: ETH)",
+            },
+            convert: {
+              type: "string",
+              example: "BRL",
+              description: "Moeda de conversão (default: BRL)",
             },
           },
         },
         ValidateSuccess: {
           type: "object",
           properties: {
-            message: {
-              type: "string",
-              example: "Transaction Valid",
-            },
-            error: {
-              type: "boolean",
-              example: false,
-            },
+            message: { type: "string", example: "Transaction Valid" },
+            error: { type: "boolean", example: false },
           },
         },
         ValidateRejected: {
           type: "object",
           properties: {
-            message: {
-              type: "string",
-              example: "Increase the amount",
-            },
-            error: {
-              type: "boolean",
-              example: false,
-            },
+            message: { type: "string", example: "Increase the amount" },
+            error: { type: "boolean", example: false },
           },
         },
-        ServerError: {
+        HealthResponse: {
           type: "object",
           properties: {
-            message: {
-              type: "string",
-              example: "Error on fetching data",
-            },
-            error: {
-              type: "boolean",
-              example: true,
-            },
+            status: { type: "string", example: "ok" },
+            version: { type: "string", example: "1.0.0" },
+            uptime: { type: "number", example: 3600 },
+            timestamp: { type: "string", example: "2025-05-16T07:00:00.000Z" },
+          },
+        },
+        ErrorResponse: {
+          type: "object",
+          properties: {
+            message: { type: "string", example: "Error on fetching data" },
+            error: { type: "boolean", example: true },
           },
         },
       },
     },
     paths: {
-      "/transaction": {
+      "/api/v1/price": {
         get: {
-          tags: ["Transaction"],
-          summary: "Obter preço atual do ETH em BRL",
+          tags: ["Price"],
+          summary: "Preço atual de uma criptomoeda",
           description:
-            "Consulta a API da Coinbase e retorna o preço atual do Ethereum convertido para Real Brasileiro (BRL).",
-          operationId: "getEthBrlPrice",
+            "Retorna o preço atual de qualquer criptomoeda suportada pela Coinbase convertido para a moeda desejada. **Resultado cacheado por 30s.**",
+          operationId: "getPrice",
+          parameters: [
+            {
+              in: "query",
+              name: "currency",
+              schema: { type: "string", default: "ETH" },
+              description: "Ticker da criptomoeda (ETH, BTC, SOL, BNB…)",
+              examples: {
+                ethereum: { summary: "Ethereum", value: "ETH" },
+                bitcoin: { summary: "Bitcoin", value: "BTC" },
+                solana: { summary: "Solana", value: "SOL" },
+              },
+            },
+            {
+              in: "query",
+              name: "convert",
+              schema: { type: "string", default: "BRL" },
+              description: "Moeda de destino (BRL, USD, EUR, USDT…)",
+              examples: {
+                brl: { summary: "Real Brasileiro", value: "BRL" },
+                usd: { summary: "Dólar Americano", value: "USD" },
+              },
+            },
+          ],
           responses: {
             "200": {
               description: "Preço retornado com sucesso",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/SuccessPrice" },
-                  example: {
-                    message: "19854.23",
-                    error: false,
-                  },
+                  schema: { $ref: "#/components/schemas/PriceResponse" },
+                },
+              },
+            },
+            "429": {
+              description: "Rate limit excedido (60 req/min)",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
                 },
               },
             },
             "500": {
-              description: "Erro ao consultar a API da Coinbase",
+              description: "Erro ao consultar a Coinbase ou par não encontrado",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ServerError" },
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
                 },
               },
             },
           },
         },
       },
-      "/validate-transaction": {
+      "/api/v1/validate-transaction": {
         post: {
           tags: ["Transaction"],
-          summary: "Validar se o preço do ETH está dentro de um intervalo",
-          description:
-            "Recebe um intervalo de valores em BRL (ex: '18000-21000') e verifica se o preço atual do ETH está dentro desse range. Retorna 202 se válido ou 406 se o valor estiver fora do intervalo.",
+          summary: "Validar se o preço está dentro de um intervalo",
           operationId: "validateTransaction",
           requestBody: {
             required: true,
@@ -144,12 +168,20 @@ const options: swaggerJsdoc.Options = {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ValidateRequest" },
                 examples: {
-                  withinRange: {
-                    summary: "Intervalo que contém o preço atual",
-                    value: { rangeBidValue: "15000-25000" },
+                  eth_brl: {
+                    summary: "ETH em BRL (padrão)",
+                    value: { rangeBidValue: "18000-21000" },
                   },
-                  belowRange: {
-                    summary: "Intervalo abaixo do preço atual",
+                  btc_usd: {
+                    summary: "BTC em USD",
+                    value: {
+                      rangeBidValue: "60000-70000",
+                      currency: "BTC",
+                      convert: "USD",
+                    },
+                  },
+                  out_of_range: {
+                    summary: "Fora do intervalo",
                     value: { rangeBidValue: "1000-5000" },
                   },
                 },
@@ -158,15 +190,23 @@ const options: swaggerJsdoc.Options = {
           },
           responses: {
             "202": {
-              description: "Transação válida — preço dentro do intervalo",
+              description: "Transação válida",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ValidateSuccess" },
                 },
               },
             },
+            "400": {
+              description: "rangeBidValue ausente no body",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
             "406": {
-              description: "Transação inválida — preço fora do intervalo",
+              description: "Preço fora do intervalo informado",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ValidateRejected" },
@@ -174,10 +214,27 @@ const options: swaggerJsdoc.Options = {
               },
             },
             "500": {
-              description: "Erro interno ao processar a validação",
+              description: "Erro interno",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/ServerError" },
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/health": {
+        get: {
+          tags: ["Health"],
+          summary: "Verificação de disponibilidade da API",
+          operationId: "healthCheck",
+          responses: {
+            "200": {
+              description: "API online",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/HealthResponse" },
                 },
               },
             },
